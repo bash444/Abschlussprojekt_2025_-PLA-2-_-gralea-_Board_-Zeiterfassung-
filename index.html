@@ -45,11 +45,12 @@
             <div class="info" id="arbeitszeit">Gearbeitete Zeit: 0.0 h</div>
             <div class="info" id="saldo">Saldo: 0.0 h</div>
             <div class="info" id="differenz">Differenz: 8.0 h</div>
+            <div class="info" id="ueberzeit">Überzeit: 0.0 h</div>
         </div>
     </div>
 
     <script>
-        const sollStunden = 1;
+        const sollStunden = 8;
         const sollMinuten = sollStunden * 60;
 
         let eingebadged = false;
@@ -57,7 +58,6 @@
         let gearbeiteteMinuten = 0;
         let timerInterval;
 
-        // Bei Seiten-Reload gespeicherte Zeit laden
         if (localStorage.getItem("startZeit")) {
             eingebadged = true;
             startZeit = new Date(localStorage.getItem("startZeit"));
@@ -103,10 +103,20 @@
 
         function updateZeitenLive(minuten) {
             const saldo = minuten - sollMinuten;
+            let ueberzeit = 0;
+            let differenz = sollStunden;
+
+            if (saldo < 0) {
+                ueberzeit = 0;
+            } else {
+                ueberzeit = saldo;
+                differenz = 0;
+            }
 
             document.getElementById("arbeitszeit").textContent = `Gearbeitete Zeit: ${minutenZuStunden(minuten)} h`;
             document.getElementById("saldo").textContent = `Saldo: ${minutenZuStunden(saldo)} h`;
-            document.getElementById("differenz").textContent = `Differenz: ${sollStunden.toFixed(1)} h`;
+            document.getElementById("differenz").textContent = `Differenz: ${differenz.toFixed(1)} h`;
+            document.getElementById("ueberzeit").textContent = `Überzeit: ${minutenZuStunden(ueberzeit)} h`;
         }
 
         function updateZeiten() {
