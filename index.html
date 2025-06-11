@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zeiterfassung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f3f3;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .status {
+            margin-top: 20px;
+        }
+        .info {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Zeiterfassung</h1>
+
+        <div class="status">
+            <button onclick="toggleBadge()">Ein-/Ausbadgen</button>
+            <p id="meldung">Status: Nicht eingebadged</p>
+            <div class="info" id="arbeitszeit">Gearbeitete Zeit: 0.0 h</div>
+            <div class="info" id="saldo">Saldo: 0.0 h</div>
+            <div class="info" id="differenz">Differenz: 8.0 h</div>
+        </div>
+    </div>
+
+    <script>
+        const sollStunden = 1;
+        const sollMinuten = sollStunden * 60;
+
+        let eingebadged = false;
+        let startZeit;
+        let gearbeiteteMinuten = 0;
+        let timerInterval;
+
+        // Bei Seiten-Reload gespeicherte Zeit laden
+        if (localStorage.getItem("startZeit")) {
+            eingebadged = true;
+            startZeit = new Date(localStorage.getItem("startZeit"));
+            document.getElementById("meldung").textContent = "Status: Eingebadged (Wiederhergestellt)";
+            startTimer();
+        }
+
+        function toggleBadge() {
+            if (!eingebadged) {
+                startZeit = new Date();
+                localStorage.setItem("startZeit", startZeit.toISOString());
+                eingebadged = true;
+                document.getElementById("meldung").textContent = "Status: Eingebadged (Willkommen!)";
+                startTimer();
+            } else {
+                stopTimer();
+                const endZeit = new Date();
+                const diffMinuten = Math.floor((endZeit - startZeit) / 60000);
+                gearbeiteteMinuten += diffMinuten;
+                eingebadged = false;
+                localStorage.removeItem("startZeit");
+                document.getElementById("meldung").textContent = `Status: Ausgebadged (Bis bald!)`;
+                updateZeiten();
+            }
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                const jetzt = new Date();
+                const laufzeit = Math.floor((jetzt - startZeit) / 60000);
+                const gesamtMinuten = gearbeiteteMinuten + laufzeit;
+                updateZeitenLive(gesamtMinuten);
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+        }
+
+        function minutenZuStunden(min) {
+            return (min / 60).toFixed(1);
+        }
+
+        function updateZeitenLive(minuten) {
+            const saldo = minuten - sollMinuten;
+
+            document.getElementById("arbeitszeit").textContent = `Gearbeitete Zeit: ${minutenZuStunden(minuten)} h`;
+            document.getElementById("saldo").textContent = `Saldo: ${minutenZuStunden(saldo)} h`;
+            document.getElementById("differenz").textContent = `Differenz: ${sollStunden.toFixed(1)} h`;
+        }
+
+        function updateZeiten() {
+            updateZeitenLive(gearbeiteteMinuten);
+        }
+
+        // Arduino-Anbindung (Platzhalter)
+        // function rfidEvent() {
+        //     toggleBadge();
+        // }
+    </script>
+</body>
+</html>
