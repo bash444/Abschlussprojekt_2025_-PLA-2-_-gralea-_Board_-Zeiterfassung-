@@ -41,6 +41,7 @@
 
         <div class="status">
             <button onclick="toggleBadge()">Ein-/Ausbadgen</button>
+            <button onclick="clearTime()">Reset</button>
             <p id="meldung">Status: Nicht eingebadged</p>
             <div class="info" id="arbeitszeit">Gearbeitete Zeit: 0.0 h</div>
             <div class="info" id="saldo">Saldo: 0.0 h</div>
@@ -58,6 +59,7 @@
         let gearbeiteteMinuten = 0;
         let timerInterval;
 
+        // Wenn bereits ein Einbadge-Zeitpunkt gespeichert ist, laden
         if (localStorage.getItem("startZeit")) {
             eingebadged = true;
             startZeit = new Date(localStorage.getItem("startZeit"));
@@ -68,7 +70,7 @@
         function toggleBadge() {
             if (!eingebadged) {
                 startZeit = new Date();
-                localStorage.setItem("startZeit", startZeit.toISOString());
+                localStorage.setItem("startZeit", startZeit.toISOString()); // Speichert Einbadge-Zeit
                 eingebadged = true;
                 document.getElementById("meldung").textContent = "Status: Eingebadged (Willkommen!)";
                 startTimer();
@@ -78,7 +80,7 @@
                 const diffMinuten = Math.floor((endZeit - startZeit) / 60000);
                 gearbeiteteMinuten += diffMinuten;
                 eingebadged = false;
-                localStorage.removeItem("startZeit");
+                localStorage.removeItem("startZeit"); // Entfernt gespeicherte Einbadge-Zeit
                 document.getElementById("meldung").textContent = `Status: Ausgebadged (Bis bald!)`;
                 updateZeiten();
             }
@@ -121,6 +123,17 @@
 
         function updateZeiten() {
             updateZeitenLive(gearbeiteteMinuten);
+        }
+
+        // Clear-Button setzt alles auf Null und entfernt die gespeicherten Daten
+        function clearTime() {
+            gearbeiteteMinuten = 0;
+            localStorage.removeItem("startZeit"); // Entfernt den gespeicherten Startzeitpunkt
+            document.getElementById("meldung").textContent = "Status: Nicht eingebadged";
+            document.getElementById("arbeitszeit").textContent = "Gearbeitete Zeit: 0.0 h";
+            document.getElementById("saldo").textContent = "Saldo: 0.0 h";
+            document.getElementById("differenz").textContent = "Differenz: 8.0 h";
+            document.getElementById("ueberzeit").textContent = "Überzeit: 0.0 h";
         }
 
         // Arduino-Anbindung (Platzhalter)
