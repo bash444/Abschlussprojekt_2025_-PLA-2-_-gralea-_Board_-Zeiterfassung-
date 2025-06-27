@@ -1,145 +1,232 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zeiterfassung</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f3f3f3;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 500px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .status {
-            margin-top: 20px;
-        }
-        .info {
-            margin: 10px 0;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zeiterfassung</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #60bae7;
+      margin: 0;
+      padding: 40px;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #statusIndicatorWrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85em;
+      font-weight: normal;
+    }
+    #statusIndicator {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background-color: grey;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      color: white;
+      margin: 5px;
+    }
+    #resetBtn { background-color: #dc3545; }
+    #badgeBtn { background-color: #28a745; }
+    #endBtn { background-color: #28a745; }
+    #historyBtn { background-color: #007bff; }
+    #resetSaldoBtn { background-color: #ffc107; color: black; }
+    #testBtn { background-color: orange; margin-top: 30px; }
+    .info { margin: 8px 0; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Zeiterfassung</h1>
-
-        <div class="status">
-            <button onclick="toggleBadge()">Ein-/Ausbadgen</button>
-            <button onclick="clearTime()">Reset</button>
-            <p id="meldung">Status: Nicht eingebadged</p>
-            <div class="info" id="arbeitszeit">Gearbeitete Zeit: 0.0 h</div>
-            <div class="info" id="saldo">Saldo: 0.0 h</div>
-            <div class="info" id="differenz">Differenz: 8.0 h</div>
-            <div class="info" id="ueberzeit">Überzeit: 0.0 h</div>
-        </div>
+  <div class="container">
+    <h1>
+      Zeiterfassung
+      <div id="statusIndicatorWrapper">
+        <span>Status:</span>
+        <span id="statusIndicator"></span>
+      </div>
+    </h1>
+    <div>
+      <button id="badgeBtn" onclick="toggleBadge()">Ein-/Ausbadgen</button>
+      <button id="resetBtn" onclick="clearTime()">Reset</button>
+      <button id="endBtn" onclick="endOfDay()">Tag beenden</button>
+      <button id="resetSaldoBtn" onclick="resetSaldo()">Saldo zurücksetzen</button>
+      <button id="historyBtn" onclick="window.location.href='history.html'">History</button>
     </div>
+    <div class="info" id="meldung">Status: Nicht eingebadged</div>
+    <div class="info" id="arbeitszeit">Gearbeitete Zeit: 0.0 h</div>
+    <div class="info" id="saldo">Saldo: -8.00 h</div>
+    <div class="info" id="differenz">Differenz: -8.00 h</div>
+    <div class="info" id="ueberzeit">Überzeit: 0.00 h</div>
+    <div>
+      <button id="testBtn" onclick="addTestTime()">Test</button>
+    </div>
+  </div>
 
-    <script>
-        const sollStunden = 8;
-        const sollMinuten = sollStunden * 60;
+  <script>
+    const sollStunden = 8;
+    const sollMinuten = sollStunden * 60;
+    let eingebadged = false;
+    let startZeit;
+    let gearbeiteteMinuten = 0;
+    let timerInterval;
+    let saldoMinuten = parseFloat(localStorage.getItem("saldoMinuten")) || -sollMinuten;
+    let neuerTag = false;
 
-        let eingebadged = false;
-        let startZeit;
-        let gearbeiteteMinuten = 0;
-        let timerInterval;
+    if (localStorage.getItem("startZeit")) {
+      eingebadged = true;
+      startZeit = new Date(localStorage.getItem("startZeit"));
+      document.getElementById("meldung").textContent = "Status: Eingebadged";
+      startTimer();
+    }
 
-        // Wenn bereits ein Einbadge-Zeitpunkt gespeichert ist, laden
-        if (localStorage.getItem("startZeit")) {
-            eingebadged = true;
-            startZeit = new Date(localStorage.getItem("startZeit"));
-            document.getElementById("meldung").textContent = "Status: Eingebadged (Wiederhergestellt)";
-            startTimer();
-        }
+    function toggleBadge() {
+      if (!eingebadged) {
+        startZeit = new Date();
+        localStorage.setItem("startZeit", startZeit.toISOString());
+        eingebadged = true;
+        document.getElementById("meldung").textContent = neuerTag ? "Status: Eingebadged (Neuer Tag)" : "Status: Eingebadged";
+        neuerTag = false;
+        startTimer();
+      } else {
+        stopTimer();
+        const endZeit = new Date();
+        const diffMinuten = Math.floor((endZeit - startZeit) / 60000);
+        gearbeiteteMinuten += diffMinuten;
+        eingebadged = false;
+        localStorage.removeItem("startZeit");
+        document.getElementById("meldung").textContent = "Status: Ausgebadged";
+        updateZeiten();
+      }
+      updateStatusIndicator();
+    }
 
-        function toggleBadge() {
-            if (!eingebadged) {
-                startZeit = new Date();
-                localStorage.setItem("startZeit", startZeit.toISOString()); // Speichert Einbadge-Zeit
-                eingebadged = true;
-                document.getElementById("meldung").textContent = "Status: Eingebadged (Willkommen!)";
-                startTimer();
-            } else {
-                stopTimer();
-                const endZeit = new Date();
-                const diffMinuten = Math.floor((endZeit - startZeit) / 60000);
-                gearbeiteteMinuten += diffMinuten;
-                eingebadged = false;
-                localStorage.removeItem("startZeit"); // Entfernt gespeicherte Einbadge-Zeit
-                document.getElementById("meldung").textContent = `Status: Ausgebadged (Bis bald!)`;
-                updateZeiten();
-            }
-        }
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        const jetzt = new Date();
+        const laufzeit = Math.floor((jetzt - startZeit) / 60000);
+        const gesamtMinuten = gearbeiteteMinuten + laufzeit;
+        updateZeitenLive(gesamtMinuten);
+      }, 1000);
+    }
 
-        function startTimer() {
-            timerInterval = setInterval(() => {
-                const jetzt = new Date();
-                const laufzeit = Math.floor((jetzt - startZeit) / 60000);
-                const gesamtMinuten = gearbeiteteMinuten + laufzeit;
-                updateZeitenLive(gesamtMinuten);
-            }, 1000);
-        }
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
 
-        function stopTimer() {
-            clearInterval(timerInterval);
-        }
+    function minutenZuStunden(min) {
+      const abs = Math.abs(min);
+      const stunden = Math.floor(abs / 60);
+      const minuten = abs % 60;
+      const str = `${stunden}.${minuten.toString().padStart(2, '0')}`;
+      return min < 0 ? `-${str}` : str;
+    }
 
-        function minutenZuStunden(min) {
-            return (min / 60).toFixed(1);
-        }
+    function updateZeitenLive(minuten) {
+      const saldo = saldoMinuten + minuten;
+      const differenzWert = sollMinuten - minuten;
+      const differenz = differenzWert > 0 ? minutenZuStunden(-differenzWert) : "0.00";
+      const ueberzeit = saldo > -sollMinuten ? minutenZuStunden(saldo + sollMinuten) : "0.00";
 
-        function updateZeitenLive(minuten) {
-            const saldo = minuten - sollMinuten;
-            let ueberzeit = 0;
-            let differenz = sollStunden;
+      document.getElementById("arbeitszeit").textContent = `Gearbeitete Zeit: ${minutenZuStunden(minuten)} h`;
+      document.getElementById("saldo").textContent = `Saldo: ${minutenZuStunden(saldo)} h`;
+      document.getElementById("differenz").textContent = `Differenz: ${differenz} h`;
+      document.getElementById("ueberzeit").textContent = `Überzeit: ${ueberzeit} h`;
+    }
 
-            if (saldo < 0) {
-                ueberzeit = 0;
-            } else {
-                ueberzeit = saldo;
-                differenz = 0;
-            }
+    function updateZeiten() {
+      updateZeitenLive(gearbeiteteMinuten);
+    }
 
-            document.getElementById("arbeitszeit").textContent = `Gearbeitete Zeit: ${minutenZuStunden(minuten)} h`;
-            document.getElementById("saldo").textContent = `Saldo: ${minutenZuStunden(saldo)} h`;
-            document.getElementById("differenz").textContent = `Differenz: ${differenz.toFixed(1)} h`;
-            document.getElementById("ueberzeit").textContent = `Überzeit: ${minutenZuStunden(ueberzeit)} h`;
-        }
+    function clearTime() {
+      gearbeiteteMinuten = 0;
+      eingebadged = false;
+      localStorage.removeItem("startZeit");
+      document.getElementById("meldung").textContent = "Status: Nicht eingebadged";
+      updateZeiten();
+      updateStatusIndicator();
+    }
 
-        function updateZeiten() {
-            updateZeitenLive(gearbeiteteMinuten);
-        }
+    function endOfDay() {
+      if (eingebadged) toggleBadge();
+      saldoMinuten += gearbeiteteMinuten - sollMinuten;
+      localStorage.setItem("saldoMinuten", saldoMinuten);
 
-        // Clear-Button setzt alles auf Null und entfernt die gespeicherten Daten
-        function clearTime() {
-            gearbeiteteMinuten = 0;
-            localStorage.removeItem("startZeit"); // Entfernt den gespeicherten Startzeitpunkt
-            document.getElementById("meldung").textContent = "Status: Nicht eingebadged";
-            document.getElementById("arbeitszeit").textContent = "Gearbeitete Zeit: 0.0 h";
-            document.getElementById("saldo").textContent = "Saldo: 0.0 h";
-            document.getElementById("differenz").textContent = "Differenz: 8.0 h";
-            document.getElementById("ueberzeit").textContent = "Überzeit: 0.0 h";
-        }
+      let datum = new Date().toISOString().split("T")[0];
+      let history = JSON.parse(localStorage.getItem("history")) || [];
+      let count = history.filter(e => e.datum.startsWith(datum)).length;
+      let datumsLabel = count > 0 ? `${datum} | ${count + 1}` : datum;
 
-        // Arduino-Anbindung (Platzhalter)
-        // function rfidEvent() {
-        //     toggleBadge();
-        // }
-    </script>
+      history.push({
+        datum: datumsLabel,
+        arbeitszeit: gearbeiteteMinuten,
+        saldo: saldoMinuten
+      });
+      localStorage.setItem("history", JSON.stringify(history));
+
+      gearbeiteteMinuten = 0;
+      neuerTag = true;
+      updateZeiten();
+      updateStatusIndicator();
+    }
+
+    function resetSaldo() {
+      saldoMinuten = -sollMinuten;
+      localStorage.setItem("saldoMinuten", saldoMinuten);
+      updateZeiten();
+      document.getElementById("meldung").textContent = "Saldo wurde zurückgesetzt auf Startwert";
+    }
+
+    function updateStatusIndicator() {
+      const indicator = document.getElementById("statusIndicator");
+      indicator.style.backgroundColor = eingebadged ? "limegreen" : "grey";
+    }
+
+    function addTestTime() {
+      gearbeiteteMinuten += sollMinuten;
+      updateZeiten();
+    }
+
+    updateZeiten();
+    updateStatusIndicator();
+
+    setInterval(() => {
+      fetch("/status.txt")
+        .then(res => res.text())
+        .then(text => {
+          const meldung = document.getElementById("meldung");
+          const indicator = document.getElementById("statusIndicator");
+
+          if (text.includes("Eingebadged")) {
+            meldung.textContent = "Status: Eingebadged (physisch)";
+            indicator.style.backgroundColor = "limegreen";
+          } else if (text.includes("Ausgebadged")) {
+            meldung.textContent = "Status: Ausgebadged (physisch)";
+            indicator.style.backgroundColor = "grey";
+          }
+        })
+        .catch(() => {
+          document.getElementById("meldung").textContent = "Status: unbekannt";
+        });
+    }, 2000);
+  </script>
 </body>
 </html>

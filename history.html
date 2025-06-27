@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Arbeitszeit-History</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #60bae7;
+            padding: 20px;
+        }
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Arbeitszeit-History</h1>
+        <button onclick="window.location.href='/'">Zurück</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>Datum</th>
+                    <th>Gearbeitete Zeit</th>
+                    <th>Saldo</th>
+                </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        function minutenZuStunden(min) {
+            return (min / 60).toFixed(2) + " h";
+        }
+
+        const history = JSON.parse(localStorage.getItem("history")) || [];
+        const body = document.getElementById("historyBody");
+
+        history.forEach(eintrag => {
+            const tr = document.createElement("tr");
+
+            const tdDatum = document.createElement("td");
+            tdDatum.textContent = eintrag.datum;
+
+            const tdZeit = document.createElement("td");
+            tdZeit.textContent = minutenZuStunden(eintrag.arbeitszeit);
+
+            const tdSaldo = document.createElement("td");
+            tdSaldo.textContent = minutenZuStunden(eintrag.saldo);
+
+            tr.appendChild(tdDatum);
+            tr.appendChild(tdZeit);
+            tr.appendChild(tdSaldo);
+            body.appendChild(tr);
+        });
+    </script>
+</body>
+</html>
