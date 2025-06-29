@@ -91,32 +91,26 @@
     let saldoMinuten = parseFloat(localStorage.getItem("saldoMinuten")) || -sollMinuten;
     let neuerTag = false;
 
-    if (localStorage.getItem("startZeit")) {
-      eingebadged = true;
-      startZeit = new Date(localStorage.getItem("startZeit"));
-      document.getElementById("meldung").textContent = "Status: Eingebadged";
-      startTimer();
-    }
-
     function toggleBadge() {
-      if (!eingebadged) {
-        startZeit = new Date();
-        localStorage.setItem("startZeit", startZeit.toISOString());
-        eingebadged = true;
-        document.getElementById("meldung").textContent = neuerTag ? "Status: Eingebadged (Neuer Tag)" : "Status: Eingebadged";
-        neuerTag = false;
-        startTimer();
-      } else {
-        stopTimer();
-        const endZeit = new Date();
-        const diffMinuten = Math.floor((endZeit - startZeit) / 60000);
-        gearbeiteteMinuten += diffMinuten;
-        eingebadged = false;
-        localStorage.removeItem("startZeit");
-        document.getElementById("meldung").textContent = "Status: Ausgebadged";
-        updateZeiten();
-      }
-      updateStatusIndicator();
+      fetch("/toggleBadge", { method: "POST" })
+        .then(res => res.text())
+        .then(status => {
+          const meldung = document.getElementById("meldung");
+          const indicator = document.getElementById("statusIndicator");
+
+          if (status.includes("Eingebadged")) {
+            eingebadged = true;
+            startZeit = new Date();
+            startTimer();
+            meldung.textContent = "Status: Eingebadged (Web)";
+            indicator.style.backgroundColor = "limegreen";
+          } else {
+            eingebadged = false;
+            stopTimer();
+            meldung.textContent = "Status: Ausgebadged (Web)";
+            indicator.style.backgroundColor = "grey";
+          }
+        });
     }
 
     function startTimer() {
@@ -142,9 +136,9 @@
 
     function updateZeitenLive(minuten) {
       const saldo = saldoMinuten + minuten;
-      const differenzWert = sollMinuten - minuten;
-      const differenz = differenzWert > 0 ? minutenZuStunden(-differenzWert) : "0.00";
-      const ueberzeit = saldo > -sollMinuten ? minutenZuStunden(saldo + sollMinuten) : "0.00";
+      const differenzWert = minuten - sollMinuten;
+      const differenz = minutenZuStunden(differenzWert);
+      const ueberzeit = saldo > 0 ? minutenZuStunden(saldo) : "0.00";
 
       document.getElementById("arbeitszeit").textContent = `Gearbeitete Zeit: ${minutenZuStunden(minuten)} h`;
       document.getElementById("saldo").textContent = `Saldo: ${minutenZuStunden(saldo)} h`;
@@ -159,7 +153,6 @@
     function clearTime() {
       gearbeiteteMinuten = 0;
       eingebadged = false;
-      localStorage.removeItem("startZeit");
       document.getElementById("meldung").textContent = "Status: Nicht eingebadged";
       updateZeiten();
       updateStatusIndicator();
@@ -216,15 +209,28 @@
           const indicator = document.getElementById("statusIndicator");
 
           if (text.includes("Eingebadged")) {
+            if (!eingebadged) {
+              eingebadged = true;
+              startZeit = new Date();
+              startTimer();
+            }
             meldung.textContent = "Status: Eingebadged (physisch)";
             indicator.style.backgroundColor = "limegreen";
           } else if (text.includes("Ausgebadged")) {
+            if (eingebadged) {
+              eingebadged = false;
+              stopTimer();
+            }
             meldung.textContent = "Status: Ausgebadged (physisch)";
+            indicator.style.backgroundColor = "grey";
+          } else {
+            meldung.textContent = "Status: unbekannt";
             indicator.style.backgroundColor = "grey";
           }
         })
         .catch(() => {
           document.getElementById("meldung").textContent = "Status: unbekannt";
+          document.getElementById("statusIndicator").style.backgroundColor = "grey";
         });
     }, 2000);
   </script>
